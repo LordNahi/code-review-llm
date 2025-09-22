@@ -72,11 +72,16 @@ export class CodeReviewPanel {
   public async _update(changes: CodeChange[]) {
     const webview = this._panel.webview;
 
-    // Analyze the code changes
-    const analyzer = new CodeAnalyzer();
-    const analysis = await analyzer.analyzeChanges(changes);
+    try {
+      // Analyze the code changes
+      const analyzer = new CodeAnalyzer();
+      const analysis = await analyzer.analyzeChanges(changes);
 
-    this._panel.webview.html = this._getHtmlForWebview(webview, analysis);
+      this._panel.webview.html = this._getHtmlForWebview(webview, analysis);
+    } catch (error) {
+      // Show error message if analysis fails
+      this._panel.webview.html = this._getErrorHtml(webview, error);
+    }
   }
 
   private _getHtmlForWebview(webview: vscode.Webview, analysis: any) {
@@ -175,18 +180,9 @@ export class CodeReviewPanel {
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>Code Review Report</h1>
-        <p>Analysis of your staged changes</p>
-    </div>
-    
     <div class="summary">
-        <h3>Summary</h3>
-        <p>Files analyzed: ${analysis.summary.filesAnalyzed}</p>
-        <p>Issues found: ${analysis.summary.totalIssues}</p>
-        <p>Errors: ${analysis.summary.errors}</p>
-        <p>Warnings: ${analysis.summary.warnings}</p>
-        <p>Suggestions: ${analysis.summary.suggestions}</p>
+        <h3>A review of your staged changes</h3>
+        <p>${analysis.summary}</p>
     </div>
     
     ${analysis.files
@@ -235,6 +231,70 @@ export class CodeReviewPanel {
             });
         }
     </script>
+</body>
+</html>`;
+  }
+
+  private _getErrorHtml(webview: vscode.Webview, error: any) {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Review - Error</title>
+    <style>
+        body {
+            font-family: var(--vscode-font-family);
+            font-size: var(--vscode-font-size);
+            color: var(--vscode-foreground);
+            background-color: var(--vscode-editor-background);
+            margin: 0;
+            padding: 20px;
+        }
+        .error-container {
+            text-align: center;
+            padding: 40px 20px;
+        }
+        .error-icon {
+            font-size: 48px;
+            color: var(--vscode-inputValidation-errorForeground);
+            margin-bottom: 20px;
+        }
+        .error-title {
+            font-size: 24px;
+            font-weight: bold;
+            color: var(--vscode-inputValidation-errorForeground);
+            margin-bottom: 16px;
+        }
+        .error-message {
+            background-color: var(--vscode-inputValidation-errorBackground);
+            border: 1px solid var(--vscode-inputValidation-errorBorder);
+            border-radius: 4px;
+            padding: 16px;
+            margin: 20px 0;
+            text-align: left;
+            font-family: var(--vscode-editor-font-family);
+        }
+        .error-suggestion {
+            color: var(--vscode-descriptionForeground);
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="error-container">
+        <div class="error-icon">⚠️</div>
+        <div class="error-title">Code Review Failed</div>
+        <div class="error-message">
+            ${
+              error.message || "An unknown error occurred during code analysis."
+            }
+        </div>
+        <div class="error-suggestion">
+            <p>Please ensure you have a language model configured in VS Code settings.</p>
+            <p>You can configure this in VS Code settings under "Language Model" or check your Copilot/GitHub Copilot setup.</p>
+        </div>
+    </div>
 </body>
 </html>`;
   }

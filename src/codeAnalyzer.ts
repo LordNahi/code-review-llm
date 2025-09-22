@@ -17,14 +17,7 @@ export interface FileAnalysis {
 }
 
 export interface AnalysisReport {
-  summary: {
-    filesAnalyzed: number;
-    totalIssues: number;
-    errors: number;
-    warnings: number;
-    suggestions: number;
-    overallScore: number;
-  };
+  summary: string;
   files: FileAnalysis[];
   timestamp: string;
 }
@@ -152,17 +145,7 @@ Be thorough but concise. Provide actionable suggestions.`;
 
       // Transform LLM response to our format
       const analysis: AnalysisReport = {
-        summary: {
-          filesAnalyzed: changes.length,
-          totalIssues:
-            (parsed.summary?.criticalIssues || 0) +
-            (parsed.summary?.warnings || 0) +
-            (parsed.summary?.suggestions || 0),
-          errors: parsed.summary?.criticalIssues || 0,
-          warnings: parsed.summary?.warnings || 0,
-          suggestions: parsed.summary?.suggestions || 0,
-          overallScore: parsed.summary?.overallScore || 5,
-        },
+        summary: parsed.summary || "Analysis completed successfully",
         files: parsed.files || [],
         timestamp: new Date().toISOString(),
       };
@@ -191,39 +174,8 @@ Be thorough but concise. Provide actionable suggestions.`;
       };
     });
 
-    const totalIssues = files.reduce(
-      (sum, file) => sum + file.issues.length,
-      0
-    );
-    const errors = files.reduce(
-      (sum, file) =>
-        sum + file.issues.filter((issue) => issue.type === "error").length,
-      0
-    );
-    const warnings = files.reduce(
-      (sum, file) =>
-        sum + file.issues.filter((issue) => issue.type === "warning").length,
-      0
-    );
-    const suggestions = files.reduce(
-      (sum, file) =>
-        sum +
-        file.issues.filter(
-          (issue) => issue.type === "info" || issue.type === "positive"
-        ).length,
-      0
-    );
-
     return {
-      summary: {
-        filesAnalyzed: changes.length,
-        totalIssues,
-        errors,
-        warnings,
-        suggestions,
-        overallScore:
-          totalIssues === 0 ? 9 : Math.max(1, 9 - errors * 2 - warnings),
-      },
+      summary: "Something went wrong",
       files,
       timestamp: new Date().toISOString(),
     };
@@ -340,14 +292,7 @@ Be thorough but concise. Provide actionable suggestions.`;
     }));
 
     return {
-      summary: {
-        filesAnalyzed: changes.length,
-        totalIssues: files.length,
-        errors: 0,
-        warnings: 0,
-        suggestions: files.length,
-        overallScore: 5,
-      },
+      summary: "Something went wrong",
       files,
       timestamp: new Date().toISOString(),
     };
