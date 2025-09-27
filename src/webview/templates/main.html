@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Review</title>
+    <css_bundle />
+</head>
+
+<body>
+    <div class="container">
+        <div class="summary">
+            <h3>Summary</h3>
+            <p>
+                <analysis_summary />
+            </p>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value" style="color: var(--vscode-charts-blue);">
+                        <files_count />
+                    </div>
+                    <div class="stat-label">Files</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" style="color: var(--vscode-charts-red);">
+                        <errors_count />
+                    </div>
+                    <div class="stat-label">Errors</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" style="color: var(--vscode-charts-orange);">
+                        <warnings_count />
+                    </div>
+                    <div class="stat-label">Warnings</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" style="color: var(--vscode-charts-green);">
+                        <improvements_count />
+                    </div>
+                    <div class="stat-label">Improvements</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="files-container">
+            <files_content />
+        </div>
+
+        <div class="actions-bar">
+            <button class="action-button primary" onclick="exportReport()">
+                Export Report
+            </button>
+            <button class="action-button secondary" onclick="refreshAnalysis()">
+                Refresh Analysis
+            </button>
+            <button class="action-button secondary" onclick="showFilterOptions()">
+                Filter Issues
+            </button>
+        </div>
+    </div>
+
+    <js_bundle />
+</body>
+
+</html>

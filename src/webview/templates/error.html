@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Review - Error</title>
+    <css_bundle />
+</head>
+
+<body>
+    <div class="error-container">
+        <h1 class="error-title">Analysis Failed</h1>
+        <p class="error-subtitle">We encountered an issue while analyzing your code changes</p>
+
+        <div class="error-message">
+            <error_message />
+        </div>
+
+        <div class="suggestions">
+            <h4>Troubleshooting Steps</h4>
+            <div class="suggestion-item">
+                Ensure you have a language model configured in VS Code settings
+            </div>
+            <div class="suggestion-item">
+                Check your GitHub Copilot or AI assistant setup
+            </div>
+            <div class="suggestion-item">
+                Verify you have staged changes in your Git repository
+            </div>
+            <div class="suggestion-item">
+                Try refreshing VS Code and running the analysis again
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <button class="action-button" onclick="retryAnalysis()">
+                Retry Analysis
+            </button>
+            <button class="action-button" onclick="openSettings()">
+                Open Settings
+            </button>
+        </div>
+    </div>
+
+    <js_bundle />
+</body>
+
+</html>
