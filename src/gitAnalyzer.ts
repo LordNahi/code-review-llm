@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import { GitExtension } from "../@types/git";
 
 export interface CodeChange {
   filePath: string;
@@ -17,12 +18,12 @@ export class GitAnalyzer {
     }
 
     // Get git extension
-    const gitExtension = vscode.extensions.getExtension("vscode.git");
+    const gitExtension = vscode.extensions.getExtension<GitExtension>("vscode.git")?.exports;
     if (!gitExtension) {
       throw new Error("Git extension not found");
     }
 
-    const git = gitExtension.exports.getAPI(1);
+    const git = gitExtension.getAPI(1);
     const repository = git.repositories[0];
 
     if (!repository) {
