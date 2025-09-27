@@ -80,6 +80,9 @@ export class CodeReviewPanel {
   public async _update(changes: CodeChange[]) {
     const webview = this._panel.webview;
 
+    // Show loading state first
+    this._panel.webview.html = this._getLoadingHtml(webview);
+
     try {
       // Analyze the code changes
       const analyzer = new CodeAnalyzer();
@@ -90,6 +93,108 @@ export class CodeReviewPanel {
       // Show error message if analysis fails
       this._panel.webview.html = this._getErrorHtml(webview, error);
     }
+  }
+
+  private _getLoadingHtml(webview: vscode.Webview) {
+    return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Code Review - Generating</title>
+    <style>
+        :root {
+            --spacing-md: 16px;
+            --spacing-lg: 24px;
+            --spacing-xl: 32px;
+            --border-radius-large: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--vscode-font-family);
+            font-size: var(--vscode-font-size);
+            line-height: 1.6;
+            color: var(--vscode-foreground);
+            background: linear-gradient(135deg, 
+                var(--vscode-editor-background) 0%, 
+                var(--vscode-sideBar-background) 100%);
+            margin: 0;
+            padding: var(--spacing-lg);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .loading-container {
+            max-width: 600px;
+            width: 100%;
+            text-align: center;
+            background: var(--vscode-editor-background);
+            border-radius: var(--border-radius-large);
+            padding: var(--spacing-xl);
+            border: 1px solid var(--vscode-panel-border);
+        }
+
+        .loading-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: var(--spacing-md);
+        }
+
+        @keyframes shimmer {
+            0% {
+                background-position: -200% 0;
+            }
+            100% {
+                background-position: 200% 0;
+            }
+        }
+
+        .loading-dots {
+            margin-top: var(--spacing-lg);
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--vscode-charts-blue);
+            animation: bounce 1.4s ease-in-out infinite both;
+        }
+
+        .dot:nth-child(1) { animation-delay: -0.32s; }
+        .dot:nth-child(2) { animation-delay: -0.16s; }
+        .dot:nth-child(3) { animation-delay: 0s; }
+
+        @keyframes bounce {
+            0%, 80%, 100% {
+                transform: scale(0);
+            }
+            40% {
+                transform: scale(1);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-container">
+        <div>Generating review...</div>
+        <div class="loading-dots">
+            <div class="dot"></div>
+            <div class="dot"></div>
+            <div class="dot"></div>
+        </div>
+    </div>
+</body>
+</html>`;
   }
 
   private _getHtmlForWebview(webview: vscode.Webview, analysis: any) {
@@ -522,11 +627,6 @@ export class CodeReviewPanel {
 </head>
 <body>
     <div class="container">
-        <div class="header">
-            <h1>Code Review</h1>
-            <p class="header-subtitle">AI-powered analysis of your staged changes</p>
-        </div>
-
         <div class="summary">
             <h3>Review Summary</h3>
             <p>${analysis.summary}</p>
