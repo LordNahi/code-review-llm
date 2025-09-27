@@ -109,6 +109,7 @@ Focus on:
 - Code Quality & Best Practices
 - Architecture & Design
 - Positive Aspects
+- Use code snippets for suggestions if applicable
 
 Be thorough but concise. Provide actionable suggestions.`;
 
