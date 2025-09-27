@@ -24,47 +24,46 @@ export interface AnalysisReport {
 
 export class CodeAnalyzer {
   async analyzeChanges(changes: CodeChange[]): Promise<AnalysisReport> {
+    const token = new vscode.CancellationTokenSource();
+
     try {
-      // Check if Language Model API is available (VS Code) or if we're in Cursor
-      if (vscode.lm && vscode.lm.selectChatModels) {
-        const [model] = await vscode.lm.selectChatModels({
-          vendor: "copilot",
-          family: "gpt-4o",
-        });
-
-        // Build the prompt with all the git changes
-        const prompt = this.buildPrompt(changes);
-
-        // Send to LLM and get response
-        const messages = [
-          vscode.LanguageModelChatMessage.User(
-            "You are an expert code reviewer. Analyze the provided code changes and provide detailed feedback in the exact JSON format specified."
-          ),
-          vscode.LanguageModelChatMessage.User(prompt),
-        ];
-
-        const response = await model.sendRequest(
-          messages,
-          {},
-          new vscode.CancellationTokenSource().token
-        );
-
-        // Parse LLM response into our report format
-        const analysis = await this.parseLLMResponse(response, changes);
-
-        return analysis;
-      } else {
-        // Running in Cursor or VS Code without Language Model API
-        console.log(
-          "Language Model API not available, using rule-based analysis"
-        );
-        return this.performRuleBasedAnalysis(changes);
+      if (!vscode.lm || !vscode.lm.selectChatModels) {
+        throw new Error("Language Model API not available");
       }
+
+      const models = await vscode.lm.selectChatModels({
+        vendor: 'copilot',
+        family: 'gpt-4o',
+      });
+
+      if (!models.length) {
+        throw new Error("No language models available");
+      }
+
+      const model = models[0];
+      const prompt = this.buildPrompt(changes);
+
+      const messages = [
+        vscode.LanguageModelChatMessage.User(
+          "You are an expert code reviewer. Analyze the provided code changes and provide detailed feedback in the exact JSON format specified."
+        ),
+        vscode.LanguageModelChatMessage.User(prompt),
+      ];
+
+      const response = await model.sendRequest(
+        messages,
+        {},
+        token.token
+      );
+
+      const analysis = await this.parseLLMResponse(response, changes);
+      return analysis;
+
     } catch (error) {
       console.error("LLM analysis failed:", error);
-
-      // Fallback if LLM fails
-      return this.performRuleBasedAnalysis(changes);
+      return this.createFallbackReport(changes);
+    } finally {
+      token.dispose();
     }
   }
 
@@ -75,24 +74,14 @@ export class CodeAnalyzer {
       prompt += `## File ${index + 1}: ${change.fileName}\n`;
       prompt += `**Change Type:** ${change.changeType}\n`;
       prompt += `**File Path:** ${change.filePath}\n\n`;
-
-      if (change.oldContent && change.oldContent.trim()) {
-        prompt += `**Previous Content:**\n\`\`\`\n${change.oldContent}\n\`\`\`\n\n`;
-      }
-
-      prompt += `**New Content:**\n\`\`\`\n${change.newContent}\n\`\`\`\n\n`;
+      prompt += `**Git Diff:**\n\`\`\`diff\n${change.diff}\n\`\`\`\n\n`;
       prompt += `---\n\n`;
     });
 
     prompt += `Please analyze these changes and provide feedback in the following JSON format:
 
 {
-  "summary": {
-    "overallScore": 8,
-    "criticalIssues": 0,
-    "warnings": 2,
-    "suggestions": 3
-  },
+  "summary": "Brief overall assessment of the changes",
   "files": [
     {
       "fileName": "example.ts",
@@ -111,6 +100,8 @@ export class CodeAnalyzer {
   ]
 }
 
+CRITICAL: Return ONLY the JSON object. No explanatory text before or after.
+
 Focus on:
 - Bugs & Logic Errors
 - Security Issues  
@@ -128,150 +119,43 @@ Be thorough but concise. Provide actionable suggestions.`;
     response: vscode.LanguageModelChatResponse,
     changes: CodeChange[]
   ): Promise<AnalysisReport> {
+    let fullResponse = "";
+
     try {
       // Collect all fragments from the streaming response
-      let fullResponse = "";
       for await (const fragment of response.text) {
         fullResponse += fragment;
       }
 
-      // Clean the response - remove any markdown formatting
-      const cleanResponse = fullResponse
-        .replace(/```json\n?/g, "")
-        .replace(/```\n?/g, "")
-        .trim();
+      // Extract JSON more robustly
+      const jsonMatch = fullResponse.match(/\{[\s\S]*\}/);
+      if (!jsonMatch) {
+        throw new Error("No valid JSON found in response");
+      }
 
-      const parsed = JSON.parse(cleanResponse);
+      const parsed = JSON.parse(jsonMatch[0]);
 
-      // Transform LLM response to our format
+      // Validate structure
+      if (!parsed.summary || !Array.isArray(parsed.files)) {
+        throw new Error("Invalid response structure");
+      }
+
       const analysis: AnalysisReport = {
-        summary: parsed.summary || "Analysis completed successfully",
-        files: parsed.files || [],
+        summary: parsed.summary,
+        files: parsed.files.map((file: any) => ({
+          fileName: file.fileName || "",
+          filePath: file.filePath || "",
+          issues: Array.isArray(file.issues) ? file.issues : []
+        })),
         timestamp: new Date().toISOString(),
       };
 
       return analysis;
+
     } catch (error) {
       console.error("Failed to parse LLM response:", error);
-      console.log("Raw response:", response);
-
-      // Return fallback if parsing fails
+      console.error("Raw response:", fullResponse);
       return this.createFallbackReport(changes);
-    }
-  }
-
-  private performRuleBasedAnalysis(changes: CodeChange[]): AnalysisReport {
-    const files: FileAnalysis[] = changes.map((change) => {
-      const issues: CodeIssue[] = [];
-
-      // Basic rule-based analysis
-      this.analyzeFileContent(change, issues);
-
-      return {
-        fileName: change.fileName,
-        filePath: change.filePath,
-        issues,
-      };
-    });
-
-    return {
-      summary: "Something went wrong",
-      files,
-      timestamp: new Date().toISOString(),
-    };
-  }
-
-  private analyzeFileContent(change: CodeChange, issues: CodeIssue[]): void {
-    const content = change.newContent;
-    const lines = content.split("\n");
-
-    // Check for common issues
-    lines.forEach((line, index) => {
-      const lineNumber = index + 1;
-
-      // Check for console.log statements
-      if (line.includes("console.log") && !line.includes("// TODO: Remove")) {
-        issues.push({
-          type: "warning",
-          title: "Console.log Statement",
-          description: "Console.log statement found in production code",
-          lineNumber,
-          codeSnippet: line.trim(),
-          suggestion: "Consider removing or replacing with proper logging",
-        });
-      }
-
-      // Check for TODO comments
-      if (line.includes("TODO") || line.includes("FIXME")) {
-        issues.push({
-          type: "info",
-          title: "TODO/FIXME Comment",
-          description: "Code contains TODO or FIXME comment",
-          lineNumber,
-          codeSnippet: line.trim(),
-          suggestion: "Address the TODO/FIXME item before finalizing",
-        });
-      }
-
-      // Check for potential security issues
-      if (line.includes("eval(") || line.includes("innerHTML =")) {
-        issues.push({
-          type: "error",
-          title: "Potential Security Risk",
-          description: "Code contains potentially unsafe operations",
-          lineNumber,
-          codeSnippet: line.trim(),
-          suggestion: "Review for security implications",
-        });
-      }
-
-      // Check for long lines
-      if (line.length > 120) {
-        issues.push({
-          type: "info",
-          title: "Long Line",
-          description: "Line exceeds 120 characters",
-          lineNumber,
-          codeSnippet: line.trim(),
-          suggestion: "Consider breaking into multiple lines for readability",
-        });
-      }
-    });
-
-    // Check for missing error handling in async functions
-    if (
-      content.includes("async ") &&
-      !content.includes("try {") &&
-      !content.includes(".catch(")
-    ) {
-      issues.push({
-        type: "warning",
-        title: "Missing Error Handling",
-        description: "Async function without explicit error handling",
-        suggestion: "Consider adding try-catch blocks or .catch() handlers",
-      });
-    }
-
-    // Check for TypeScript-specific issues
-    if (change.fileName.endsWith(".ts") || change.fileName.endsWith(".tsx")) {
-      if (content.includes("any") && !content.includes("// eslint-disable")) {
-        issues.push({
-          type: "warning",
-          title: "TypeScript 'any' Type",
-          description: "Code uses 'any' type which reduces type safety",
-          suggestion: "Consider using more specific types",
-        });
-      }
-    }
-
-    // If no issues found, add a positive note
-    if (issues.length === 0) {
-      issues.push({
-        type: "positive",
-        title: "Code Quality",
-        description: "No obvious issues detected in this file",
-        suggestion: "Good work! Continue following best practices",
-      });
     }
   }
 
@@ -282,17 +166,15 @@ Be thorough but concise. Provide actionable suggestions.`;
       issues: [
         {
           type: "info",
-          title: "LLM Analysis Unavailable",
-          description:
-            "Unable to perform AI-powered analysis. Please check your language model configuration.",
-          suggestion:
-            "Ensure you have a language model configured in VSCode settings.",
+          title: "Analysis Unavailable",
+          description: "Unable to perform AI-powered analysis. Please check your language model configuration.",
+          suggestion: "Ensure you have a language model configured in VSCode settings.",
         },
       ],
     }));
 
     return {
-      summary: "Something went wrong",
+      summary: "Analysis failed - fallback report generated",
       files,
       timestamp: new Date().toISOString(),
     };
