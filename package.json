@@ -29,14 +29,7 @@
           "when": "scmProvider == git"
         }
       ]
-    },
-    "languageModelTools": [
-      {
-        "id": "codeReview",
-        "title": "Code Review Assistant",
-        "description": "AI-powered code review for staged changes"
-      }
-    ]
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
@@ -44,8 +37,8 @@
     "watch": "tsc -watch -p ./"
   },
   "devDependencies": {
-    "@types/vscode": "^1.74.0",
     "@types/node": "16.x",
+    "@types/vscode": "^1.74.0",
     "typescript": "^4.9.4"
   }
 }
