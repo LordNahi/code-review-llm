@@ -33,8 +33,10 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run compile",
-    "compile": "tsc -p ./",
-    "watch": "tsc -watch -p ./"
+    "build:webview": "node build-webview.js",
+    "watch:webview": "node build-webview.js --watch",
+    "compile": "npm run build:webview && tsc -p ./",
+    "watch": "npm run watch:webview & tsc -watch -p ./"
   },
   "devDependencies": {
     "@types/node": "16.x",
