@@ -191,12 +191,10 @@
     border-bottom: none;
 }
 
-.issue:hover {
-    background: var(--vscode-list-hoverBackground);
-}
-
 .issue-header {
     display: flex;
+    flex-direction: row;
+    justify-content: space-between;
     align-items: flex-start;
     gap: var(--spacing-md);
     margin-bottom: var(--spacing-md);
@@ -254,10 +252,9 @@
 
 .code-block {
     background: var(--vscode-textCodeBlock-background);
-    border: 1px solid var(--vscode-panel-border);
     border-radius: var(--border-radius);
     padding: var(--spacing-md);
-    margin: var(--spacing-md) 0;
+    margin: var(--spacing-md);
     font-family: var(--vscode-editor-font-family);
     font-size: var(--vscode-editor-font-size);
     overflow-x: auto;
@@ -297,6 +294,116 @@
     border-top: 1px solid var(--vscode-panel-border);
 }
 
+/* Enhanced Code Blocks with Syntax Highlighting */
+.code-block-container {
+    margin: var(--spacing-md) 0;
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    background: transparent;
+}
+
+.code-block-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: var(--spacing-xs);
+    background: var(--vscode-editorWidget-background);
+    border: 1px solid var(--vscode-panel-border);
+    border-bottom: 1px solid var(--vscode-panel-border);
+    font-size: 0.75rem;
+}
+
+.code-language {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    color: var(--vscode-descriptionForeground);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.code-language::before {
+    content: '';
+}
+
+.code-block {
+    margin: 0;
+    padding: var(--spacing-md);
+    background: var(--vscode-editor-background);
+    border: none;
+    font-family: var(--vscode-editor-font-family);
+    font-size: var(--vscode-editor-font-size);
+    line-height: 1.5;
+    overflow-x: auto;
+    white-space: pre;
+    color: var(--vscode-editor-foreground);
+    border-radius: var(--border-radius);
+}
+
+/* Go to Code Button */
+.go-to-code-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--spacing-xs);
+    background: var(--vscode-button-secondaryBackground);
+    color: var(--vscode-button-secondaryForeground);
+    border: 1px solid var(--vscode-button-border);
+    border-radius: 4px;
+    padding: 2px var(--spacing-xs);
+    font-size: 0.7rem;
+    cursor: pointer;
+    transition: var(--transition);
+    text-decoration: none;
+}
+
+.go-to-code-btn:hover {
+    background: var(--vscode-button-secondaryHoverBackground);
+    transform: translateY(-1px);
+}
+
+.go-to-code-btn:active {
+    transform: translateY(0);
+}
+
+.go-to-code-icon {
+    font-size: 0.8em;
+}
+
+.go-to-code-text {
+    font-family: var(--vscode-editor-font-family);
+    font-weight: 500;
+}
+
+/* Issue Actions Container */
+.issue-actions {
+    margin-top: var(--spacing-sm);
+    display: flex;
+    gap: var(--spacing-sm);
+    align-items: center;
+}
+
+/* Prism.js will handle syntax highlighting, but we can override colors to match VS Code theme */
+.token.keyword {
+    color: var(--vscode-symbolIcon-keywordForeground, #569cd6) !important;
+}
+
+.token.string {
+    color: var(--vscode-symbolIcon-stringForeground, #ce9178) !important;
+}
+
+.token.comment {
+    color: var(--vscode-symbolIcon-colorForeground, #6a9955) !important;
+}
+
+.token.number {
+    color: var(--vscode-symbolIcon-numberForeground, #b5cea8) !important;
+}
+
+.token.function {
+    color: var(--vscode-symbolIcon-functionForeground, #dcdcaa) !important;
+}
+
 /* Responsive design */
 @media (max-width: 768px) {
     .header h1 {
@@ -310,5 +417,15 @@
     .actions-bar {
         flex-direction: column;
         align-items: center;
+    }
+
+    .code-block-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: var(--spacing-xs);
+    }
+
+    .go-to-code-btn {
+        font-size: 0.65rem;
     }
 }

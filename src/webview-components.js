@@ -156,14 +156,16 @@ class IssueComponent {
         return `
             <div class="issue ${issueType}" data-issue-id="${issueId}">
                 <div class="issue-header"> 
-                    <div class="issue-content">
+                    <div>
                         <h4 class="issue-title">${escapedTitle}</h4>
                         <p class="issue-description">${escapedDescription}</p>
-                        ${codeSnippetHtml}
-                        ${suggestionHtml}
-                        ${goToCodeButton}
                     </div>
-                    <span class="issue-type ${issueType}">${issueType.toUpperCase()}</span>
+                    <span class="issue-type ${issueType}">${issueType.toUpperCase()}</span>                
+                </div>    
+                <div class="issue-content">
+                    ${codeSnippetHtml}
+                    ${suggestionHtml}
+                    ${goToCodeButton}
                 </div>
             </div>
         `;
