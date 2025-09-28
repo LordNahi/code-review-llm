@@ -58,61 +58,12 @@ class WebviewBuilder {
 
         const processedTemplate = this.processTemplate(template, cssBundle, jsBundle);
 
-        // TODO: Try move below out in a way that keeps out HTML inside html files, just don't like this
-        // sitting cramped up here ...
-
         return `export function getMainTemplate(analysis: any): string {
-    const filesContent = analysis.files
-        .map((file: any, index: number) => \`
-            <div class="file-section" data-file-index="\${index}">
-                <div class="file-header" onclick="toggleFileSection(\${index})">
-                    \${file.fileName}
-                    <span class="toggle-icon">▼</span>
-                </div>
-                <div class="file-issues">
-                    \${file.issues
-                        .map((issue: any, issueIndex: number) => \`
-                            <div class="issue \${issue.type}" data-issue-id="\${index}-\${issueIndex}">
-                                <div class="issue-header"> 
-                                    <div class="issue-content">
-                                        <h4 class="issue-title">\${issue.title}</h4>
-                                        <p class="issue-description">\${issue.description}</p>
-                                        \${issue.codeSnippet ? \`<div class="code-block">\${issue.codeSnippet}</div>\` : ""}
-                                        \${issue.suggestion ? \`<div class="suggestion"><strong>Suggestion:</strong> \${issue.suggestion}</div>\` : ""}
-                                    </div>
-                                    <span class="issue-type \${issue.type}">\${issue.type.toUpperCase()}</span>
-                                </div>
-                            </div>
-                        \`)
-                        .join("")}
-                </div>
-            </div>
-        \`)
-        .join("");
-
-    return \`${processedTemplate
+    const { TemplateRenderer } = require('./webview-components');
+    const processedHtml = TemplateRenderer.processMainTemplate(\`${processedTemplate
                 .replace(/`/g, '\\`')
-                .replace(/\$\{/g, '\\${')
-                // Handle custom elements
-                .replace(/<analysis_summary\s*\/>/g, '${analysis.summary}')
-                .replace(/<files_count\s*\/>/g, '${analysis.files.length}')
-                .replace(/<errors_count\s*\/>/g, '${analysis.files.reduce((acc: number, file: any) => acc + file.issues.filter((i: any) => i.type === "error").length, 0)}')
-                .replace(/<warnings_count\s*\/>/g, '${analysis.files.reduce((acc: number, file: any) => acc + file.issues.filter((i: any) => i.type === "warning").length, 0)}')
-                .replace(/<improvements_count\s*\/>/g, '${analysis.files.reduce((acc: number, file: any) => acc + file.issues.filter((i: any) => i.type === "positive").length, 0)}')
-                .replace(/<files_content\s*\/>/g, '${filesContent}')
-                // Handle legacy {{}} and <!-- --> comment syntax for backwards compatibility
-                .replace(/\{\{\s*ANALYSIS_SUMMARY\s*\}\}/g, '${analysis.summary}')
-                .replace(/\{\{\s*FILES_COUNT\s*\}\}/g, '${analysis.files.length}')
-                .replace(/\{\{\s*ERRORS_COUNT\s*\}\}/g, '${analysis.files.reduce((acc: number, file: any) => acc + file.issues.filter((i: any) => i.type === "error").length, 0)}')
-                .replace(/\{\{\s*WARNINGS_COUNT\s*\}\}/g, '${analysis.files.reduce((acc: number, file: any) => acc + file.issues.filter((i: any) => i.type === "warning").length, 0)}')
-                .replace(/\{\{\s*IMPROVEMENTS_COUNT\s*\}\}/g, '${analysis.files.reduce((acc: number, file: any) => acc + file.issues.filter((i: any) => i.type === "positive").length, 0)}')
-                .replace(/\{\{\s*FILES_CONTENT\s*\}\}/g, '${filesContent}')
-                .replace(/<!--\s*ANALYSIS_SUMMARY\s*-->/g, '${analysis.summary}')
-                .replace(/<!--\s*FILES_COUNT\s*-->/g, '${analysis.files.length}')
-                .replace(/<!--\s*ERRORS_COUNT\s*-->/g, '${analysis.files.reduce((acc: number, file: any) => acc + file.issues.filter((i: any) => i.type === "error").length, 0)}')
-                .replace(/<!--\s*WARNINGS_COUNT\s*-->/g, '${analysis.files.reduce((acc: number, file: any) => acc + file.issues.filter((i: any) => i.type === "warning").length, 0)}')
-                .replace(/<!--\s*IMPROVEMENTS_COUNT\s*-->/g, '${analysis.files.reduce((acc: number, file: any) => acc + file.issues.filter((i: any) => i.type === "positive").length, 0)}')
-                .replace(/<!--\s*FILES_CONTENT\s*-->/g, '${filesContent}')}\`;
+                .replace(/\$\{/g, '\\${}')}\`, analysis);
+    return processedHtml;
 }`;
     }
 
@@ -167,6 +118,26 @@ ${errorTemplate}
 `;
 
         fs.writeFileSync(this.outputFile, output, 'utf8');
+
+        // Copy webview-components.js to the output directory
+        const componentsSource = path.join(__dirname, 'src', 'webview-components.js');
+        const componentsTarget = path.join(__dirname, 'out', 'webview-components.js');
+
+        try {
+            const componentsContent = this.readFile(componentsSource);
+            if (componentsContent) {
+                // Ensure out directory exists
+                const outDir = path.dirname(componentsTarget);
+                if (!fs.existsSync(outDir)) {
+                    fs.mkdirSync(outDir, { recursive: true });
+                }
+                fs.writeFileSync(componentsTarget, componentsContent, 'utf8');
+                console.log('📦 Copied webview-components.js to out directory');
+            }
+        } catch (error) {
+            console.error('❌ Failed to copy webview-components.js:', error.message);
+        }
+
         console.log('✅ Webview templates built successfully!');
     }
 
@@ -193,6 +164,12 @@ ${errorTemplate}
                 fs.watch(watchPath, { recursive: true }, rebuild);
             }
         });
+
+        // Also watch the webview-components.js file itself
+        const componentsFile = path.join(__dirname, 'src', 'webview-components.js');
+        if (fs.existsSync(componentsFile)) {
+            fs.watch(componentsFile, rebuild);
+        }
 
         // Initial build
         this.build();
