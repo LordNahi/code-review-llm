@@ -31,6 +31,86 @@ class HtmlUtils {
             .replace(/</g, '&lt;')
             .replace(/>/g, '&gt;');
     }
+
+    /**
+     * Detect programming language from file extension or content
+     */
+    static detectLanguage(fileName, code) {
+        if (!fileName && !code) return 'text';
+
+        // Language detection by file extension
+        const ext = fileName ? fileName.split('.').pop()?.toLowerCase() : '';
+        const langMap = {
+            'js': 'javascript',
+            'jsx': 'jsx',
+            'ts': 'typescript',
+            'tsx': 'tsx',
+            'py': 'python',
+            'java': 'java',
+            'c': 'c',
+            'cpp': 'cpp',
+            'cs': 'csharp',
+            'php': 'php',
+            'rb': 'ruby',
+            'go': 'go',
+            'rs': 'rust',
+            'swift': 'swift',
+            'kt': 'kotlin',
+            'dart': 'dart',
+            'html': 'html',
+            'css': 'css',
+            'scss': 'scss',
+            'sass': 'sass',
+            'json': 'json',
+            'xml': 'xml',
+            'yaml': 'yaml',
+            'yml': 'yaml',
+            'md': 'markdown',
+            'sh': 'bash',
+            'sql': 'sql'
+        };
+
+        if (ext && langMap[ext]) {
+            return langMap[ext];
+        }
+
+        // Fallback: try to detect from code content patterns
+        if (code) {
+            if (/import\s+.*from|export\s+.*{|const\s+.*=.*=>/.test(code)) return 'javascript';
+            if (/interface\s+\w+|type\s+\w+\s*=|as\s+\w+/.test(code)) return 'typescript';
+            if (/def\s+\w+\(|import\s+\w+|from\s+\w+\s+import/.test(code)) return 'python';
+            if (/public\s+class|private\s+\w+|import\s+java\./.test(code)) return 'java';
+            if (/<[^>]+>.*<\/[^>]+>/.test(code)) return 'html';
+            if (/\{\s*".*":\s*".*"/.test(code)) return 'json';
+        }
+
+        return 'text';
+    }
+
+    /**
+     * Simple wrapper - just escape the code for now
+     * Real syntax highlighting will be handled by Prism.js in the browser
+     */
+    static applySyntaxHighlighting(code, language) {
+        if (!code) return '';
+        // Just return escaped code - Prism.js will handle the highlighting
+        return HtmlUtils.escapeCode(code);
+    }    /**
+     * Create a "Go to Code" button for file navigation
+     */
+    static createGoToCodeButton(fileName, lineNumber) {
+        if (!fileName) return '';
+
+        const buttonId = `goto-${Math.random().toString(36).substr(2, 9)}`;
+        const displayLine = lineNumber ? `:${lineNumber}` : '';
+
+        return `
+            <button class="go-to-code-btn" onclick="goToCode('${HtmlUtils.escape(fileName)}', ${lineNumber || 0})" title="Open ${fileName}${displayLine}">
+                <span class="go-to-code-icon">→</span>
+                <span class="go-to-code-text">${HtmlUtils.escape(fileName)}${displayLine}</span>
+            </button>
+        `;
+    }
 }
 
 class IssueComponent {
@@ -39,22 +119,38 @@ class IssueComponent {
      * @param {Object} issue - The issue object
      * @param {number} fileIndex - File index for unique IDs
      * @param {number} issueIndex - Issue index for unique IDs
+     * @param {string} fileName - File name for language detection and navigation
      * @returns {string} HTML string for the issue
      */
-    static render(issue, fileIndex, issueIndex) {
+    static render(issue, fileIndex, issueIndex, fileName = '') {
         const issueId = `${fileIndex}-${issueIndex}`;
         const escapedTitle = HtmlUtils.escape(issue.title || 'No title');
         const escapedDescription = HtmlUtils.escape(issue.description || 'No description');
         const issueType = HtmlUtils.escape(issue.type || 'info');
 
-        // Handle code snippet if present
-        const codeSnippetHtml = issue.codeSnippet
-            ? `<div class="code-block">${HtmlUtils.escapeCode(issue.codeSnippet)}</div>`
-            : '';
+        // Handle code snippet with syntax highlighting if present
+        let codeSnippetHtml = '';
+        if (issue.codeSnippet) {
+            const language = HtmlUtils.detectLanguage(fileName, issue.codeSnippet);
+            const highlightedCode = HtmlUtils.applySyntaxHighlighting(issue.codeSnippet, language);
 
-        // Handle suggestion if present
+            codeSnippetHtml = `
+                <div class="code-block-container">
+                    <div class="code-block-header">
+                        <span class="code-language">${language}</span>
+                        ${issue.lineNumber ? HtmlUtils.createGoToCodeButton(fileName, issue.lineNumber) : ''}
+                    </div>
+                    <pre class="code-block language-${language}"><code class="language-${language}">${highlightedCode}</code></pre>
+                </div>
+            `;
+        }        // Handle suggestion if present
         const suggestionHtml = issue.suggestion
             ? `<div class="suggestion"><strong>Suggestion:</strong> ${HtmlUtils.escape(issue.suggestion)}</div>`
+            : '';
+
+        // Add "Go to Code" button in issue header if we have line info but no code snippet
+        const goToCodeButton = !issue.codeSnippet && fileName && issue.lineNumber
+            ? `<div class="issue-actions">${HtmlUtils.createGoToCodeButton(fileName, issue.lineNumber)}</div>`
             : '';
 
         return `
@@ -65,6 +161,7 @@ class IssueComponent {
                         <p class="issue-description">${escapedDescription}</p>
                         ${codeSnippetHtml}
                         ${suggestionHtml}
+                        ${goToCodeButton}
                     </div>
                     <span class="issue-type ${issueType}">${issueType.toUpperCase()}</span>
                 </div>
@@ -85,7 +182,7 @@ class FileSection {
 
         // Render all issues for this file
         const issuesHtml = (file.issues || [])
-            .map((issue, issueIndex) => IssueComponent.render(issue, index, issueIndex))
+            .map((issue, issueIndex) => IssueComponent.render(issue, index, issueIndex, file.fileName))
             .join('');
 
         return `

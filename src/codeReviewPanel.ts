@@ -57,8 +57,8 @@ export class CodeReviewPanel {
 
     // Handle messages from the webview
     this._panel.webview.onDidReceiveMessage(
-      (message) => {
-        switch (message.command) {
+      async (message) => {
+        switch (message.command || message.type) {
           case "exportReport":
             this._exportReport(message.report);
             return;
@@ -69,6 +69,9 @@ export class CodeReviewPanel {
           case "openSettings":
             // Open VS Code settings
             vscode.commands.executeCommand('workbench.action.openSettings', 'languageModel');
+            return;
+          case "goToCode":
+            await this._goToCode(message.fileName, message.lineNumber);
             return;
         }
       },
@@ -121,6 +124,78 @@ export class CodeReviewPanel {
       }
     } catch (error) {
       vscode.window.showErrorMessage(`Failed to export report: ${error}`);
+    }
+  }
+
+  private async _goToCode(fileName: string, lineNumber: number = 0) {
+    try {
+      if (!fileName) {
+        vscode.window.showWarningMessage('No file specified');
+        return;
+      }
+
+      // Find the file in the workspace
+      const workspaceFolders = vscode.workspace.workspaceFolders;
+      if (!workspaceFolders || workspaceFolders.length === 0) {
+        vscode.window.showWarningMessage('No workspace folder open');
+        return;
+      }
+
+      // Try to find the file in the workspace
+      const files = await vscode.workspace.findFiles(`**/${fileName}`, '**/node_modules/**', 5);
+
+      let fileUri: vscode.Uri | undefined;
+
+      if (files.length > 0) {
+        // If multiple files found, prefer the one in the current workspace
+        fileUri = files[0];
+
+        // If multiple files, let user choose
+        if (files.length > 1) {
+          const items = files.map(uri => ({
+            label: vscode.workspace.asRelativePath(uri),
+            description: uri.fsPath,
+            uri: uri
+          }));
+
+          const selected = await vscode.window.showQuickPick(items, {
+            placeHolder: `Multiple files named "${fileName}" found. Select one:`
+          });
+
+          if (selected) {
+            fileUri = selected.uri;
+          } else {
+            return; // User cancelled
+          }
+        }
+      } else {
+        // Try exact path match if relative path was provided
+        const exactPath = vscode.Uri.joinPath(workspaceFolders[0].uri, fileName);
+        try {
+          await vscode.workspace.fs.stat(exactPath);
+          fileUri = exactPath;
+        } catch {
+          vscode.window.showWarningMessage(`File "${fileName}" not found in workspace`);
+          return;
+        }
+      }
+
+      if (fileUri) {
+        // Open the file
+        const document = await vscode.workspace.openTextDocument(fileUri);
+        const editor = await vscode.window.showTextDocument(document);
+
+        // Navigate to the specific line if provided
+        if (lineNumber > 0) {
+          const position = new vscode.Position(Math.max(0, lineNumber - 1), 0);
+          const range = new vscode.Range(position, position);
+
+          editor.selection = new vscode.Selection(position, position);
+          editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+        }
+      }
+    } catch (error) {
+      vscode.window.showErrorMessage(`Failed to open file: ${error}`);
     }
   }
 

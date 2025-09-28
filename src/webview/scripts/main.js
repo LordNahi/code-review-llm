@@ -203,6 +203,16 @@ style.textContent = `
 `;
 document.head.appendChild(style);
 
+// Go to Code functionality
+function goToCode(fileName, lineNumber = 0) {
+    // Send message to VS Code extension to open the file
+    vscode.postMessage({
+        type: 'goToCode',
+        fileName: fileName,
+        lineNumber: lineNumber
+    });
+}
+
 // Restore previous state if available
 const previousState = vscode.getState();
 if (previousState && previousState.currentFilter && previousState.currentFilter !== 'all') {

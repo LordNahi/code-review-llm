@@ -38,15 +38,32 @@ class WebviewBuilder {
     }
 
     processTemplate(templateContent, cssBundle, jsBundle) {
+        // Add Prism.js for syntax highlighting
+        const prismCSS = `<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css">`;
+        const prismJS = `
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-core.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-typescript.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-python.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-css.min.js"></script>
+            <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+            <script>
+                // Auto-highlight code blocks after page load
+                document.addEventListener('DOMContentLoaded', function() {
+                    Prism.highlightAll();
+                });
+            </script>
+        `;
+
         return templateContent
             // Handle custom elements
-            .replace(/<css_bundle\s*\/>/g, `<style>${cssBundle}</style>`)
-            .replace(/<js_bundle\s*\/>/g, `<script>${jsBundle}</script>`)
+            .replace(/<css_bundle\s*\/>/g, `${prismCSS}<style>${cssBundle}</style>`)
+            .replace(/<js_bundle\s*\/>/g, `<script>${jsBundle}</script>${prismJS}`)
             // Handle legacy {{}} and <!-- --> comment syntax for backwards compatibility
-            .replace(/\{\{\s*CSS_BUNDLE\s*\}\}/g, cssBundle)
-            .replace(/\{\{\s*JS_BUNDLE\s*\}\}/g, jsBundle)
-            .replace(/<!--\s*CSS_BUNDLE\s*-->/g, cssBundle)
-            .replace(/<!--\s*JS_BUNDLE\s*-->/g, jsBundle);
+            .replace(/\{\{\s*CSS_BUNDLE\s*\}\}/g, `${prismCSS}${cssBundle}`)
+            .replace(/\{\{\s*JS_BUNDLE\s*\}\}/g, `${jsBundle}${prismJS}`)
+            .replace(/<!--\s*CSS_BUNDLE\s*-->/g, `${prismCSS}${cssBundle}`)
+            .replace(/<!--\s*JS_BUNDLE\s*-->/g, `${jsBundle}${prismJS}`);
     }
 
     generateMainTemplate() {
