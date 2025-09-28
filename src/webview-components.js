@@ -140,7 +140,7 @@ class IssueComponent {
                         <span class="code-language">${language}</span>
                         ${issue.lineNumber ? HtmlUtils.createGoToCodeButton(fileName, issue.lineNumber) : ''}
                     </div>
-                    <pre class="code-block language-${language}"><code class="language-${language}">${highlightedCode}</code></pre>
+                    <pre style="margin: 0" class="code-block language-${language}"><code class="language-${language}">${highlightedCode}</code></pre>
                 </div>
             `;
         }        // Handle suggestion if present
