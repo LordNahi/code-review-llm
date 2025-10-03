@@ -77,9 +77,6 @@ export class CodeReviewPanel {
             // Open VS Code settings
             vscode.commands.executeCommand('workbench.action.openSettings', 'languageModel');
             return;
-          case "goToCode":
-            await this._goToCode(message.fileName, message.lineNumber);
-            return;
         }
       },
       null,
@@ -131,112 +128,6 @@ export class CodeReviewPanel {
       }
     } catch (error) {
       vscode.window.showErrorMessage(`Failed to export report: ${error}`);
-    }
-  }
-
-  private async _goToCode(fileName: string, lineNumber: number = 0) {
-    try {
-      if (!fileName) {
-        vscode.window.showWarningMessage('No file specified');
-        return;
-      }
-
-      // Find the file in the workspace
-      const workspaceFolders = vscode.workspace.workspaceFolders;
-      if (!workspaceFolders || workspaceFolders.length === 0) {
-        vscode.window.showWarningMessage('No workspace folder open');
-        return;
-      }
-
-      // Extract basename for searching
-      const baseFileName = fileName.split(/[\\/]/).pop() || fileName;
-
-      let fileUri: vscode.Uri | undefined;
-
-      // Strategy 1: Try exact path match if it looks like a relative path
-      if (fileName.includes('/') || fileName.includes('\\')) {
-        const exactPath = vscode.Uri.joinPath(workspaceFolders[0].uri, fileName);
-        try {
-          await vscode.workspace.fs.stat(exactPath);
-          fileUri = exactPath;
-        } catch {
-          // File not found at exact path, continue with other strategies
-        }
-      }
-
-      // Strategy 2: If no exact match, search for files with the same basename
-      if (!fileUri) {
-        const files = await vscode.workspace.findFiles(`**/${baseFileName}`, '**/node_modules/**', 10);
-
-        if (files.length > 0) {
-          // If we have a relative path hint from fileName, try to match it
-          if (fileName.includes('/') || fileName.includes('\\')) {
-            // Look for a file that ends with the same relative path structure
-            const relativePart = fileName.replace(/^.*?([^\/\\]*[\/\\][^\/\\]+)$/, '$1');
-            const matchingFile = files.find(uri =>
-              vscode.workspace.asRelativePath(uri).endsWith(relativePart)
-            );
-            if (matchingFile) {
-              fileUri = matchingFile;
-            }
-          }
-
-          // If no smart match found, use the first result
-          if (!fileUri) {
-            fileUri = files[0];
-          }
-
-          // If multiple files, let user choose (unless we found a smart match)
-          if (files.length > 1 && !fileName.includes('/') && !fileName.includes('\\')) {
-            const items = files.map(uri => ({
-              label: vscode.workspace.asRelativePath(uri),
-              description: uri.fsPath,
-              uri: uri
-            }));
-
-            const selected = await vscode.window.showQuickPick(items, {
-              placeHolder: `Multiple files named "${baseFileName}" found. Select one:`
-            });
-
-            if (selected) {
-              fileUri = selected.uri;
-            } else {
-              return; // User cancelled
-            }
-          }
-        }
-      }
-
-      // If still no file found, show appropriate error message
-      if (!fileUri) {
-        if (fileName.includes('/') || fileName.includes('\\')) {
-          const baseFileName = fileName.split(/[\\/]/).pop() || fileName;
-          vscode.window.showWarningMessage(
-            `File "${baseFileName}" not found in current workspace. ` +
-            `It may be from a different project (original path: ${fileName})`
-          );
-        } else {
-          vscode.window.showWarningMessage(`File "${fileName}" not found in workspace`);
-        }
-        return;
-      }
-
-      if (fileUri) {
-        // Open the file
-        const document = await vscode.workspace.openTextDocument(fileUri);
-        const editor = await vscode.window.showTextDocument(document);
-
-        // Navigate to the specific line if provided
-        if (lineNumber > 0) {
-          const position = new vscode.Position(Math.max(0, lineNumber - 1), 0);
-          const range = new vscode.Range(position, position);
-
-          editor.selection = new vscode.Selection(position, position);
-          editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
-        }
-      }
-    } catch (error) {
-      vscode.window.showErrorMessage(`Failed to open file: ${error}`);
     }
   }
 

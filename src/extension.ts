@@ -42,13 +42,14 @@ export function activate(context: vscode.ExtensionContext) {
         // Resolve relative path to absolute
         const absolutePath = vscode.Uri.joinPath(workspaceFolder.uri, filePath);
 
-        const document = await vscode.workspace.openTextDocument(absolutePath);
-        const editor = await vscode.window.showTextDocument(document);
+        try {
+          await vscode.commands.executeCommand('git.openChange', absolutePath);
+        } catch (error) {
+          console.log('git.openChange failed:', error);
 
-        // Convert to 0-based line number and go to that position
-        const position = new vscode.Position(Math.max(0, lineNumber - 1), 0);
-        editor.selection = new vscode.Selection(position, position);
-        editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenter);
+          const document = await vscode.workspace.openTextDocument(absolutePath);
+          await vscode.window.showTextDocument(document);
+        }
 
       } catch (error) {
         vscode.window.showErrorMessage(`Could not open file: ${error}`);

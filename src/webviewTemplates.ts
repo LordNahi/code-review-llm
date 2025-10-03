@@ -1,5 +1,5 @@
 // Auto-generated file - do not edit manually
-// Generated at: 2025-10-03T13:00:02.284Z
+// Generated at: 2025-10-03T13:54:24.965Z
 
 export function getMainTemplate(analysis: any): string {
     const { TemplateRenderer } = require('./webview-components');
