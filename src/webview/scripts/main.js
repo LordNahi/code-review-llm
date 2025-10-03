@@ -23,7 +23,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 function toggleFileSection(index) {
-    const fileSection = document.querySelector(`[data-file-index="${index}"]`);
+    const fileSection = document.querySelector(`[data-file-index="` + index + `"]`);
     const isCollapsed = fileSection.classList.contains('collapsed');
 
     fileSection.classList.toggle('collapsed');
@@ -205,9 +205,8 @@ document.head.appendChild(style);
 
 // Go to Code functionality
 function goToCode(fileName, lineNumber = 0) {
-    // Send message to VS Code extension to open the file
     vscode.postMessage({
-        type: 'goToCode',
+        command: 'goToCode',
         fileName: fileName,
         lineNumber: lineNumber
     });

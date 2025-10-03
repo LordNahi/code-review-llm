@@ -79,7 +79,7 @@ class WebviewBuilder {
     const { TemplateRenderer } = require('./webview-components');
     const processedHtml = TemplateRenderer.processMainTemplate(\`${processedTemplate
                 .replace(/`/g, '\\`')
-                .replace(/\$\{/g, '\\${}')}\`, analysis);
+                .replace(/\$\{/g, '\\${')}\`, analysis);
     return processedHtml;
 }`;
     }
@@ -92,7 +92,7 @@ class WebviewBuilder {
         const processedTemplate = this.processTemplate(template, cssBundle, '');
 
         return `export function getLoadingTemplate(): string {
-    return \`${processedTemplate.replace(/`/g, '\\`').replace(/\$\{/g, '\\${}')}\`;
+    return \`${processedTemplate.replace(/`/g, '\\`').replace(/\$\{/g, '\\${')}\`;
 }`;
     }
 
@@ -108,7 +108,7 @@ class WebviewBuilder {
         return `export function getErrorTemplate(error: any): string {
     return \`${processedTemplate
                 .replace(/`/g, '\\`')
-                .replace(/\$\{/g, '\\${}')
+                .replace(/\$\{/g, '\\${')
                 // Handle custom elements
                 .replace(/<error_message\s*\/>/g, '${error.message || "An unknown error occurred during code analysis."}')
                 // Handle legacy {{}} and <!-- --> comment syntax for backwards compatibility

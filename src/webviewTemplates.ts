@@ -1,5 +1,5 @@
 // Auto-generated file - do not edit manually
-// Generated at: 2025-09-28T13:02:17.622Z
+// Generated at: 2025-10-03T13:00:02.284Z
 
 export function getMainTemplate(analysis: any): string {
     const { TemplateRenderer } = require('./webview-components');
@@ -90,7 +90,7 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 
 function toggleFileSection(index) {
-    const fileSection = document.querySelector(\`[data-file-index="\${}index}"]\`);
+    const fileSection = document.querySelector(\`[data-file-index="\` + index + \`"]\`);
     const isCollapsed = fileSection.classList.contains('collapsed');
 
     fileSection.classList.toggle('collapsed');
@@ -186,7 +186,7 @@ function filterIssues(filterType) {
 
         if (shouldShow) {
             issue.style.display = 'block';
-            issue.style.animation = \`fadeInUp 0.3s ease-out \${}index * 0.05}s both\`;
+            issue.style.animation = \`fadeInUp 0.3s ease-out \${index * 0.05}s both\`;
         } else {
             issue.style.animation = 'fadeOut 0.2s ease-out both';
             setTimeout(() => {
@@ -272,9 +272,8 @@ document.head.appendChild(style);
 
 // Go to Code functionality
 function goToCode(fileName, lineNumber = 0) {
-    // Send message to VS Code extension to open the file
     vscode.postMessage({
-        type: 'goToCode',
+        command: 'goToCode',
         fileName: fileName,
         lineNumber: lineNumber
     });

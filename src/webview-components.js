@@ -98,14 +98,14 @@ class HtmlUtils {
     }    /**
      * Create a "Go to Code" button for file navigation
      */
-    static createGoToCodeButton(fileName, lineNumber) {
+    static createGoToCodeButton(fileName, filePath, lineNumber) {
         if (!fileName) return '';
 
         const buttonId = `goto-${Math.random().toString(36).substr(2, 9)}`;
         const displayLine = lineNumber ? `:${lineNumber}` : '';
 
         return `
-            <button class="go-to-code-btn" onclick="goToCode('${HtmlUtils.escape(fileName)}', ${lineNumber || 0})" title="Open ${fileName}${displayLine}">
+            <button class="go-to-code-btn" onclick="goToCode('${HtmlUtils.escape(filePath)}', ${lineNumber || 0})" title="Open ${fileName}${displayLine}">
                 <span class="go-to-code-icon">→</span>
                 <span class="go-to-code-text">${HtmlUtils.escape(fileName)}${displayLine}</span>
             </button>
@@ -122,7 +122,7 @@ class IssueComponent {
      * @param {string} fileName - File name for language detection and navigation
      * @returns {string} HTML string for the issue
      */
-    static render(issue, fileIndex, issueIndex, fileName = '') {
+    static render(issue, fileIndex, issueIndex, fileName = '', filePath = '') {
         const issueId = `${fileIndex}-${issueIndex}`;
         const escapedTitle = HtmlUtils.escape(issue.title || 'No title');
         const escapedDescription = HtmlUtils.escape(issue.description || 'No description');
@@ -138,7 +138,7 @@ class IssueComponent {
                 <div class="code-block-container">
                     <div class="code-block-header">
                         <span class="code-language">${language}</span>
-                        ${issue.lineNumber ? HtmlUtils.createGoToCodeButton(fileName, issue.lineNumber) : ''}
+                        ${issue.lineNumber ? HtmlUtils.createGoToCodeButton(fileName, filePath, issue.lineNumber) : ''}
                     </div>
                     <pre style="margin: 0" class="code-block language-${language}"><code class="language-${language}">${highlightedCode}</code></pre>
                 </div>
@@ -150,7 +150,7 @@ class IssueComponent {
 
         // Add "Go to Code" button in issue header if we have line info but no code snippet
         const goToCodeButton = !issue.codeSnippet && fileName && issue.lineNumber
-            ? `<div class="issue-actions">${HtmlUtils.createGoToCodeButton(fileName, issue.lineNumber)}</div>`
+            ? `<div class="issue-actions">${HtmlUtils.createGoToCodeButton(fileName, filePath, issue.lineNumber)}</div>`
             : '';
 
         return `
@@ -182,9 +182,11 @@ class FileSection {
     static render(file, index) {
         const escapedFileName = HtmlUtils.escape(file.fileName || 'Unknown file');
 
+        console.log('file.fileName, file.filePath', file.fileName, file.filePath);
+
         // Render all issues for this file
         const issuesHtml = (file.issues || [])
-            .map((issue, issueIndex) => IssueComponent.render(issue, index, issueIndex, file.fileName))
+            .map((issue, issueIndex) => IssueComponent.render(issue, index, issueIndex, file.fileName, file.filePath))
             .join('');
 
         return `

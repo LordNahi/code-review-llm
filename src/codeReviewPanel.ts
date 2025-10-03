@@ -62,6 +62,13 @@ export class CodeReviewPanel {
           case "exportReport":
             this._exportReport(message.report);
             return;
+          case 'goToCode':
+            vscode.commands.executeCommand(
+              'codeReview.goToLine',
+              message.fileName,
+              message.lineNumber
+            );
+            break;
           case "refreshAnalysis":
             // Trigger a refresh by calling the parent method if available
             vscode.commands.executeCommand('codeReview.startReview');
@@ -141,43 +148,77 @@ export class CodeReviewPanel {
         return;
       }
 
-      // Try to find the file in the workspace
-      const files = await vscode.workspace.findFiles(`**/${fileName}`, '**/node_modules/**', 5);
+      // Extract basename for searching
+      const baseFileName = fileName.split(/[\\/]/).pop() || fileName;
 
       let fileUri: vscode.Uri | undefined;
 
-      if (files.length > 0) {
-        // If multiple files found, prefer the one in the current workspace
-        fileUri = files[0];
-
-        // If multiple files, let user choose
-        if (files.length > 1) {
-          const items = files.map(uri => ({
-            label: vscode.workspace.asRelativePath(uri),
-            description: uri.fsPath,
-            uri: uri
-          }));
-
-          const selected = await vscode.window.showQuickPick(items, {
-            placeHolder: `Multiple files named "${fileName}" found. Select one:`
-          });
-
-          if (selected) {
-            fileUri = selected.uri;
-          } else {
-            return; // User cancelled
-          }
-        }
-      } else {
-        // Try exact path match if relative path was provided
+      // Strategy 1: Try exact path match if it looks like a relative path
+      if (fileName.includes('/') || fileName.includes('\\')) {
         const exactPath = vscode.Uri.joinPath(workspaceFolders[0].uri, fileName);
         try {
           await vscode.workspace.fs.stat(exactPath);
           fileUri = exactPath;
         } catch {
-          vscode.window.showWarningMessage(`File "${fileName}" not found in workspace`);
-          return;
+          // File not found at exact path, continue with other strategies
         }
+      }
+
+      // Strategy 2: If no exact match, search for files with the same basename
+      if (!fileUri) {
+        const files = await vscode.workspace.findFiles(`**/${baseFileName}`, '**/node_modules/**', 10);
+
+        if (files.length > 0) {
+          // If we have a relative path hint from fileName, try to match it
+          if (fileName.includes('/') || fileName.includes('\\')) {
+            // Look for a file that ends with the same relative path structure
+            const relativePart = fileName.replace(/^.*?([^\/\\]*[\/\\][^\/\\]+)$/, '$1');
+            const matchingFile = files.find(uri =>
+              vscode.workspace.asRelativePath(uri).endsWith(relativePart)
+            );
+            if (matchingFile) {
+              fileUri = matchingFile;
+            }
+          }
+
+          // If no smart match found, use the first result
+          if (!fileUri) {
+            fileUri = files[0];
+          }
+
+          // If multiple files, let user choose (unless we found a smart match)
+          if (files.length > 1 && !fileName.includes('/') && !fileName.includes('\\')) {
+            const items = files.map(uri => ({
+              label: vscode.workspace.asRelativePath(uri),
+              description: uri.fsPath,
+              uri: uri
+            }));
+
+            const selected = await vscode.window.showQuickPick(items, {
+              placeHolder: `Multiple files named "${baseFileName}" found. Select one:`
+            });
+
+            if (selected) {
+              fileUri = selected.uri;
+            } else {
+              return; // User cancelled
+            }
+          }
+        }
+      }
+
+      // If still no file found, show appropriate error message
+      if (!fileUri) {
+        if (fileName.includes('/') || fileName.includes('\\')) {
+          const baseFileName = fileName.split(/[\\/]/).pop() || fileName;
+          vscode.window.showWarningMessage(
+            `File "${baseFileName}" not found in current workspace. ` +
+            `It may be from a different project (original path: ${fileName})`
+          );
+        } else {
+          vscode.window.showWarningMessage(`File "${fileName}" not found in workspace`);
+        }
+        return;
       }
 
       if (fileUri) {

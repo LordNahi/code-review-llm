@@ -29,7 +29,35 @@ export function activate(context: vscode.ExtensionContext) {
     }
   );
 
+  const goToLineCommand = vscode.commands.registerCommand(
+    'codeReview.goToLine',
+    async (filePath: string, lineNumber: number) => {
+      try {
+        const workspaceFolder = vscode.workspace.workspaceFolders?.[0];
+        if (!workspaceFolder) {
+          vscode.window.showErrorMessage('No workspace folder found');
+          return;
+        }
+
+        // Resolve relative path to absolute
+        const absolutePath = vscode.Uri.joinPath(workspaceFolder.uri, filePath);
+
+        const document = await vscode.workspace.openTextDocument(absolutePath);
+        const editor = await vscode.window.showTextDocument(document);
+
+        // Convert to 0-based line number and go to that position
+        const position = new vscode.Position(Math.max(0, lineNumber - 1), 0);
+        editor.selection = new vscode.Selection(position, position);
+        editor.revealRange(new vscode.Range(position, position), vscode.TextEditorRevealType.InCenter);
+
+      } catch (error) {
+        vscode.window.showErrorMessage(`Could not open file: ${error}`);
+      }
+    }
+  );
+
   context.subscriptions.push(startReviewCommand);
+  context.subscriptions.push(goToLineCommand);
 }
 
-export function deactivate() {}
+export function deactivate() { }

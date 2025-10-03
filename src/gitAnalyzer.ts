@@ -35,8 +35,12 @@ export class GitAnalyzer {
 
     for (const change of stagedChanges) {
       try {
-        const filePath = change.uri.fsPath;
-        const fileName = change.uri.fsPath.split(/[\\/]/).pop() || "";
+        const absolutePath = change.uri.fsPath;
+        // Use git repository root as the base for relative paths
+        const repoRoot = repository.rootUri.fsPath;
+        const relativePath = absolutePath.replace(repoRoot, '').replace(/^[\\/]/, '');
+        // Use the relative path as fileName so file opening works correctly
+        const fileName = relativePath;
 
         let diff = "";
         if (this.getChangeType(change.status) === "deleted") {
@@ -47,7 +51,7 @@ export class GitAnalyzer {
 
         if (diff) {
           changes.push({
-            filePath,
+            filePath: relativePath,
             fileName,
             diff,
             changeType: this.getChangeType(change.status),
